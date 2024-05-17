@@ -1,17 +1,74 @@
 package controller;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import annotation.AnnotationController;
 
 public class FrontController extends HttpServlet {
+    private boolean scanne = false;
+    private List<String> controllerClasses = new ArrayList<>();
+
+    private void addClassIfController(String className) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            if (clazz.isAnnotationPresent(AnnotationController.class)) {
+                controllerClasses.add(clazz.getName());
+            }
+        } catch (ClassNotFoundException e) {
+            System.err.println("Class not found: " + className);
+        }
+    }
+
+    private void findClassesInDirectory(String packageName, File directory) {
+        for (File file : Objects.requireNonNull(directory.listFiles())) {
+            if (file.isDirectory()) {
+                findClassesInDirectory(packageName + "." + file.getName(), file);
+            } else if (file.getName().endsWith(".class")) {
+                String className = packageName + '.' + file.getName().substring(0, file.getName().length() - 6);
+                addClassIfController(className);
+            }
+        }
+    }
+
+    public void findControllerClasses() {
+        String controllerPackage = getServletConfig().getInitParameter("controller");
+        if (controllerPackage == null || controllerPackage.isEmpty()) {
+            System.err.println("Controller package not specified");
+            return;
+        }
+
+        String path = controllerPackage.replace('.', '/');
+        File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + path));
+
+        if (!directory.exists() || !directory.isDirectory()) {
+            System.err.println("Package directory not found: " + directory.getAbsolutePath());
+            return;
+        }
+
+        findClassesInDirectory(controllerPackage, directory);
+        scanne = true;
+    }
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         try (PrintWriter out = resp.getWriter()){
             String url = req.getRequestURL().toString();
             out.println("URL :"+ url);
+
+            if (!scanne) {
+                findControllerClasses();
+            }
+
+            out.println("Liste des classes controleurs :");
+            for (String controllerClass : controllerClasses) {
+                out.println(controllerClass);
+            }
         } catch (Exception e) {
             PrintWriter pw = resp.getWriter();
             pw.println(e);
