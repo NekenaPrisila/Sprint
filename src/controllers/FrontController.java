@@ -1,15 +1,15 @@
-package controller;
+package controllers;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import annotation.AnnotationController;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import annotations.AnnotationController;
 
 public class FrontController extends HttpServlet {
     private boolean scanne = false;
@@ -19,6 +19,7 @@ public class FrontController extends HttpServlet {
         try {
             Class<?> clazz = Class.forName(className);
             if (clazz.isAnnotationPresent(AnnotationController.class)) {
+                System.out.println(clazz.getName());
                 controllerClasses.add(clazz.getName());
             }
         } catch (ClassNotFoundException e) {
@@ -44,8 +45,8 @@ public class FrontController extends HttpServlet {
             return;
         }
 
-        String path = controllerPackage.replace('.', '/');
-        File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + path));
+        // String path = controllerPackage.replace('.', '/');
+        File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + controllerPackage));
 
         if (!directory.exists() || !directory.isDirectory()) {
             System.err.println("Package directory not found: " + directory.getAbsolutePath());
