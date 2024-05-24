@@ -1,26 +1,39 @@
 package controllers;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Objects;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import annotations.AnnotationController;
+import annotations.GET;
 
 public class FrontController extends HttpServlet {
-    private boolean scanne = false;
-    private List<String> controllerClasses = new ArrayList<>();
+    private HashMap<String, Mapping> urlMappings = new HashMap<>();
+
+    public void init() throws ServletException {
+        super.init();
+        findControllerClasses();
+    }
 
     private void addClassIfController(String className) {
         try {
             Class<?> clazz = Class.forName(className);
             if (clazz.isAnnotationPresent(AnnotationController.class)) {
-                System.out.println(clazz.getName());
-                controllerClasses.add(clazz.getName());
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.isAnnotationPresent(GET.class)) {
+                        GET getAnnotation = method.getAnnotation(GET.class);
+                        String url = getAnnotation.value();
+                        System.out.println(clazz.getName());
+                        Mapping mapping = new Mapping(clazz.getName(), method.getName());
+                        urlMappings.put(url, mapping);
+                    }
+                }
             }
         } catch (ClassNotFoundException e) {
             System.err.println("Class not found: " + className);
@@ -45,8 +58,8 @@ public class FrontController extends HttpServlet {
             return;
         }
 
-        // String path = controllerPackage.replace('.', '/');
-        File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + controllerPackage));
+        String path = controllerPackage.replace('.', '/');
+        File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + path));
 
         if (!directory.exists() || !directory.isDirectory()) {
             System.err.println("Package directory not found: " + directory.getAbsolutePath());
@@ -54,46 +67,37 @@ public class FrontController extends HttpServlet {
         }
 
         findClassesInDirectory(controllerPackage, directory);
-        scanne = true;
     }
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        try (PrintWriter out = resp.getWriter()){
-            String url = req.getRequestURL().toString();
-            out.println("URL :"+ url);
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        
+        String relativeUrl = url.substring(contextPath.length());
 
-            if (!scanne) {
-                findControllerClasses();
-            }
+        String[] parts = relativeUrl.split("/");
+        String methode = "";
+        if (parts.length >= 2) {
+            methode = parts[1];
+        }
 
-            out.println("Liste des classes controleurs :");
-            for (String controllerClass : controllerClasses) {
-                out.println(controllerClass);
+        try (PrintWriter out = resp.getWriter()) {
+            out.println("URL: " + url);
+
+            Mapping mapping = urlMappings.get(methode);
+            if (mapping != null) {
+                out.println("Method found: " + mapping);
+            } else {
+                out.println("No method associated with this URL");
             }
-        } catch (Exception e) {
-            PrintWriter pw = resp.getWriter();
-            pw.println(e);
         }
     }
 
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) 
-    throws ServletException, IOException {
-        try {
-            processRequested(req, resp);
-        } catch (Exception e) {
-            PrintWriter pw = resp.getWriter();
-            pw.println(e);
-        } 
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        processRequested(req, resp);
     }
 
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) 
-    throws ServletException, IOException {
-        try {
-            processRequested(req, resp);
-        } catch (Exception e) {
-            PrintWriter pw = resp.getWriter();
-            pw.println(e);
-        } 
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        processRequested(req, resp);
     }
-
 }
