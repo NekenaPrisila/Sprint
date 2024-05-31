@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Objects;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -84,16 +85,32 @@ public class FrontController extends HttpServlet {
 
         try (PrintWriter out = resp.getWriter()) {
             out.println("URL: " + url);
-
+        
             Mapping mapping = urlMappings.get(methode);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
-
+        
                 Class<?> clazz = Class.forName(mapping.getClassName());
                 Method method = clazz.getMethod(mapping.getMethodName());
+        
+                Class<?> returnType = method.getReturnType();
+                out.println("Return type of the method: " + returnType.getName());
+        
                 Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
-                String result = (String) method.invoke(controllerInstance);
-                out.println(result);
+                Object result = method.invoke(controllerInstance);
+        
+                if (returnType.equals(String.class)) {
+                    out.println((String) result);
+                } else if (returnType.equals(ModelView.class)) {
+                    ModelView mv = (ModelView) result;
+                    out.println("ModelView URL: " + mv.getUrl());
+        
+                    mv.getData().forEach((key, value) -> req.setAttribute(key, value));
+        
+                    req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+                } else {
+                    out.println("Unsupported return type: " + returnType.getName());
+                }
             } else {
                 out.println("No method associated with this URL");
             }
