@@ -77,6 +77,7 @@ public class FrontController extends HttpServlet {
 
         String[] parts = relativeUrl.split("/");
         String methode = "";
+        
         if (parts.length >= 2) {
             methode = parts[1];
         }
@@ -87,9 +88,17 @@ public class FrontController extends HttpServlet {
             Mapping mapping = urlMappings.get(methode);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
+
+                Class<?> clazz = Class.forName(mapping.getClassName());
+                Method method = clazz.getMethod(mapping.getMethodName());
+                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
+                String result = (String) method.invoke(controllerInstance);
+                out.println(result);
             } else {
                 out.println("No method associated with this URL");
             }
+        } catch (Exception e) {
+            e.printStackTrace(resp.getWriter());
         }
     }
 
