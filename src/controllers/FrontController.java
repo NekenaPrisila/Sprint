@@ -77,6 +77,7 @@ public class FrontController extends HttpServlet {
 
         String[] parts = relativeUrl.split("/");
         String methode = "";
+        
         if (parts.length >= 2) {
             methode = parts[1];
         }
