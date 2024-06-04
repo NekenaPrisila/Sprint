@@ -13,3 +13,18 @@ A modifier dans web.xml projet test:
     </init-param> -->
  - annoter vos methodes dans vos controllers de la maniere suivante
     <!-- @GET("votre_nom_de_methode") -->
+ - mettre mes fichiers jsp dans:
+      webapps/mon_projet/mes_fichiers.jsp
+ - pour direger vers un view utiliser ModelView
+   et ajouter les donnees a envoyer vers le ficher jsp a l'aide de addData dans la class ModelView
+   exemple:
+   <!-- @GET("listeEmp")
+    public ModelView listerData() {
+        ModelView mv = new ModelView("test.jsp");
+        String anarana = "Jean";
+        int age = 20;
+        mv.addData("nom", anarana);
+        mv.addData("nbr", age);
+        return mv;
+    } -->
+
