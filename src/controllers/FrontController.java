@@ -4,7 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 
 import jakarta.servlet.ServletException;
@@ -16,6 +18,7 @@ import annotations.GET;
 
 public class FrontController extends HttpServlet {
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
+    private List<String> errors = new ArrayList<>();
 
     public void init() throws ServletException {
         super.init();
@@ -30,14 +33,23 @@ public class FrontController extends HttpServlet {
                     if (method.isAnnotationPresent(GET.class)) {
                         GET getAnnotation = method.getAnnotation(GET.class);
                         String url = getAnnotation.value();
-                        System.out.println(clazz.getName());
-                        Mapping mapping = new Mapping(clazz.getName(), method.getName());
-                        urlMappings.put(url, mapping);
+                        
+                        // Check if the URL is already mapped
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " + 
+                            urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
+                            " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            errors.add(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName());
+                            urlMappings.put(url, mapping);
+                        }
                     }
                 }
             }
         } catch (ClassNotFoundException e) {
-            System.err.println("Class not found: " + className);
+            String errorMessage = "Class not found: " + className;
+            errors.add(errorMessage);
         }
     }
 
@@ -55,58 +67,76 @@ public class FrontController extends HttpServlet {
     public void findControllerClasses() {
         String controllerPackage = getServletConfig().getInitParameter("controller");
         if (controllerPackage == null || controllerPackage.isEmpty()) {
-            System.err.println("Controller package not specified");
+            String errorMessage = "Error: Controller package not specified";
+            errors.add(errorMessage);
             return;
         }
-
+    
         String path = controllerPackage.replace('.', '/');
         File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + path));
-
+    
         if (!directory.exists() || !directory.isDirectory()) {
-            System.err.println("Package directory not found: " + directory.getAbsolutePath());
+            String errorMessage = "Error: Package directory not found: " + 
+                                  directory.getPath().replace(getServletContext().getRealPath(""), "");
+            errors.add(errorMessage);
             return;
         }
-
+    
         findClassesInDirectory(controllerPackage, directory);
+
+        if (urlMappings.isEmpty()) {
+            String errorMessage = "Error: No controllers found in package " + controllerPackage;
+            errors.add(errorMessage);
+        }
     }
+    
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         
         String relativeUrl = url.substring(contextPath.length());
-
+    
         String[] parts = relativeUrl.split("/");
-        String methode = "";
+        String method = "";
         
         if (parts.length >= 2) {
-            methode = parts[1];
+            method = parts[1];
         }
-
+    
         try (PrintWriter out = resp.getWriter()) {
             out.println("URL: " + url);
-        
-            Mapping mapping = urlMappings.get(methode);
+            
+            // Display errors if any
+            if (!errors.isEmpty()) {
+                out.println("Errors encountered during configuration:");
+                for (String error : errors) {
+                    out.println(error);
+                }
+                return;
+            }
+    
+            Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
-        
+    
                 Class<?> clazz = Class.forName(mapping.getClassName());
-                Method method = clazz.getMethod(mapping.getMethodName());
-        
-                Class<?> returnType = method.getReturnType();
+                Method mappedMethod = clazz.getMethod(mapping.getMethodName());
+    
+                Class<?> returnType = mappedMethod.getReturnType();
                 out.println("Return type of the method: " + returnType.getName());
-        
+    
                 Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
-                Object result = method.invoke(controllerInstance);
-        
+                Object result = mappedMethod.invoke(controllerInstance);
+    
                 if (returnType.equals(String.class)) {
                     out.println((String) result);
                 } else if (returnType.equals(ModelView.class)) {
                     ModelView mv = (ModelView) result;
                     out.println("ModelView URL: " + mv.getUrl());
-        
+    
                     mv.getData().forEach((key, value) -> req.setAttribute(key, value));
-        
+    
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                 } else {
                     out.println("Unsupported return type: " + returnType.getName());
@@ -118,6 +148,7 @@ public class FrontController extends HttpServlet {
             e.printStackTrace(resp.getWriter());
         }
     }
+    
 
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
