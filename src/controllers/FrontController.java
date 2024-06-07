@@ -4,9 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Objects;
 
 import jakarta.servlet.ServletException;
@@ -18,14 +16,13 @@ import annotations.GET;
 
 public class FrontController extends HttpServlet {
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
-    private List<String> errors = new ArrayList<>();
 
     public void init() throws ServletException {
         super.init();
         findControllerClasses();
     }
 
-    private void addClassIfController(String className) {
+    private void addClassIfController(String className) throws ServletException {
         try {
             Class<?> clazz = Class.forName(className);
             if (clazz.isAnnotationPresent(AnnotationController.class)) {
@@ -39,7 +36,7 @@ public class FrontController extends HttpServlet {
                             String errorMessage = "Error: URL " + url + " is mapped twice: " + 
                             urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
                             " and " + clazz.getName() + "#" + method.getName() + ".";      
-                            errors.add(errorMessage);
+                            throw new ServletException(errorMessage);
                         } else {
                             Mapping mapping = new Mapping(clazz.getName(), method.getName());
                             urlMappings.put(url, mapping);
@@ -49,11 +46,11 @@ public class FrontController extends HttpServlet {
             }
         } catch (ClassNotFoundException e) {
             String errorMessage = "Class not found: " + className;
-            errors.add(errorMessage);
+            throw new ServletException(errorMessage, e);
         }
     }
 
-    private void findClassesInDirectory(String packageName, File directory) {
+    private void findClassesInDirectory(String packageName, File directory) throws ServletException {
         for (File file : Objects.requireNonNull(directory.listFiles())) {
             if (file.isDirectory()) {
                 findClassesInDirectory(packageName + "." + file.getName(), file);
@@ -64,32 +61,26 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    public void findControllerClasses() {
+    public void findControllerClasses() throws ServletException {
         String controllerPackage = getServletConfig().getInitParameter("controller");
         if (controllerPackage == null || controllerPackage.isEmpty()) {
-            String errorMessage = "Error: Controller package not specified";
-            errors.add(errorMessage);
-            return;
+            throw new ServletException("Error: Controller package not specified");
         }
     
         String path = controllerPackage.replace('.', '/');
         File directory = new File(getServletContext().getRealPath("/WEB-INF/classes/" + path));
     
         if (!directory.exists() || !directory.isDirectory()) {
-            String errorMessage = "Error: Package directory not found: " + 
-                                  directory.getPath().replace(getServletContext().getRealPath(""), "");
-            errors.add(errorMessage);
-            return;
+            throw new ServletException("Error: Package directory not found: " + 
+                                       directory.getPath().replace(getServletContext().getRealPath(""), ""));
         }
     
         findClassesInDirectory(controllerPackage, directory);
 
         if (urlMappings.isEmpty()) {
-            String errorMessage = "Error: No controllers found in package " + controllerPackage;
-            errors.add(errorMessage);
+            throw new ServletException("Error: No controllers found in package " + controllerPackage);
         }
     }
-    
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String url = req.getRequestURI();
@@ -106,15 +97,6 @@ public class FrontController extends HttpServlet {
     
         try (PrintWriter out = resp.getWriter()) {
             out.println("URL: " + url);
-            
-            // Display errors if any
-            if (!errors.isEmpty()) {
-                out.println("Errors encountered during configuration:");
-                for (String error : errors) {
-                    out.println(error);
-                }
-                return;
-            }
     
             Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
@@ -139,17 +121,21 @@ public class FrontController extends HttpServlet {
     
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                 } else {
-                    out.println("Unsupported return type: " + returnType.getName());
+                    throw new ServletException("Unsupported return type: " + returnType.getName());
                 }
             } else {
+                resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 out.println("No method associated with this URL");
             }
+        } catch (ServletException e) {
+            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            e.printStackTrace(resp.getWriter());
         } catch (Exception e) {
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             e.printStackTrace(resp.getWriter());
         }
     }
     
-
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
     }
