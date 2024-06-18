@@ -101,19 +101,12 @@ public class FrontController extends HttpServlet {
             Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
+                
+                Object result = Reflect.executeMethod(mapping, req, resp);
     
-                Class<?> clazz = Class.forName(mapping.getClassName());
-                Method mappedMethod = clazz.getMethod(mapping.getMethodName());
-    
-                Class<?> returnType = mappedMethod.getReturnType();
-                out.println("Return type of the method: " + returnType.getName());
-    
-                Object controllerInstance = clazz.getDeclaredConstructor().newInstance();
-                Object result = mappedMethod.invoke(controllerInstance);
-    
-                if (returnType.equals(String.class)) {
+                if (result instanceof String) {
                     out.println((String) result);
-                } else if (returnType.equals(ModelView.class)) {
+                } else if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
                     out.println("ModelView URL: " + mv.getUrl());
     
@@ -121,7 +114,7 @@ public class FrontController extends HttpServlet {
     
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                 } else {
-                    throw new ServletException("Unsupported return type: " + returnType.getName());
+                    throw new ServletException("Unsupported return type: " + result.getClass().getName());
                 }
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);

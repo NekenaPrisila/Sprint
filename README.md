@@ -27,4 +27,11 @@ A modifier dans web.xml projet test:
         mv.addData("nbr", age);
         return mv;
     } -->
-
+ - si il y a des parametre annoter les paramettre comme suite:
+     <!-- @GET("/testParam")
+    public ModelView doSomething(@Param("Nom") String param1, @Param("Age") String param2) {
+        ModelView mv = new ModelView("test.jsp");
+        mv.addData("nom", param1);
+        mv.addData("nbr", param2);
+        return mv;
+    } -->
