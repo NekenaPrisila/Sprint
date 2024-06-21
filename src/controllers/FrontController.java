@@ -104,15 +104,16 @@ public class FrontController extends HttpServlet {
         try (PrintWriter out = resp.getWriter()) {
             out.println("URL: " + url);
             out.println("Method: " + method);
-
+        
             Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
                 
                 Object result = Reflect.executeMethod(mapping, req, resp);
-                System.out.println("Executed method result: " + result);
-
+                out.println("Executed method result class name: " + result.getClass().getName());
+        
                 if (result instanceof String) {
+                    out.println("eeeeeee");
                     out.println((String) result);
                 } else if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
@@ -134,6 +135,7 @@ public class FrontController extends HttpServlet {
             e.printStackTrace(resp.getWriter());
         }
     }
+        
     
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
