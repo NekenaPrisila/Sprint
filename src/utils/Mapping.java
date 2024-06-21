@@ -1,4 +1,4 @@
-package controllers;
+package utils;
 public class Mapping {
     private String className;
     private String methodName;

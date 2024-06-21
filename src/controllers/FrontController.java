@@ -11,6 +11,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import utils.Mapping;
+import utils.ModelView;
+import utils.Reflect;
 import annotations.AnnotationController;
 import annotations.GET;
 
@@ -80,38 +83,41 @@ public class FrontController extends HttpServlet {
         if (urlMappings.isEmpty()) {
             throw new ServletException("Error: No controllers found in package " + controllerPackage);
         }
+        
+        // Log mappings
+        System.out.println("Loaded URL Mappings:");
+        urlMappings.forEach((key, value) -> System.out.println(key + " -> " + value.getClassName() + "#" + value.getMethodName()));
     }
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
-        
         String relativeUrl = url.substring(contextPath.length());
-    
-        String[] parts = relativeUrl.split("/");
-        String method = "";
+
+        // Extract the URL without query parameters
+        String method = relativeUrl.split("\\?")[0];
         
-        if (parts.length >= 2) {
-            method = parts[1];
+        if (method.startsWith("/")) {
+            method = method.substring(1);
         }
-    
+
         try (PrintWriter out = resp.getWriter()) {
             out.println("URL: " + url);
-    
+            out.println("Method: " + method);
+
             Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
                 out.println("Method found: " + mapping);
                 
                 Object result = Reflect.executeMethod(mapping, req, resp);
-    
+                System.out.println("Executed method result: " + result);
+
                 if (result instanceof String) {
                     out.println((String) result);
                 } else if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
                     out.println("ModelView URL: " + mv.getUrl());
-    
                     mv.getData().forEach((key, value) -> req.setAttribute(key, value));
-    
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                 } else {
                     throw new ServletException("Unsupported return type: " + result.getClass().getName());
