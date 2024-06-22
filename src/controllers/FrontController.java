@@ -100,8 +100,8 @@ public class FrontController extends HttpServlet {
         if (method.startsWith("/")) {
             method = method.substring(1);
         }
-
-        try (PrintWriter out = resp.getWriter()) {
+        PrintWriter out = resp.getWriter();
+        try {
             out.println("URL: " + url);
             out.println("Method: " + method);
         
@@ -113,11 +113,12 @@ public class FrontController extends HttpServlet {
                 out.println("Executed method result class name: " + result.getClass().getName());
         
                 if (result instanceof String) {
-                    out.println("eeeeeee");
                     out.println((String) result);
                 } else if (result instanceof ModelView) {
                     ModelView mv = (ModelView) result;
+
                     out.println("ModelView URL: " + mv.getUrl());
+                    
                     mv.getData().forEach((key, value) -> req.setAttribute(key, value));
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                 } else {
@@ -129,10 +130,10 @@ public class FrontController extends HttpServlet {
             }
         } catch (ServletException e) {
             resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            e.printStackTrace(resp.getWriter());
+            out.println(e.getMessage());
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            e.printStackTrace(resp.getWriter());
+            out.println(e.getMessage());
         }
     }
         
