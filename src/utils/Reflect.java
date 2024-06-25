@@ -25,7 +25,7 @@ public class Reflect {
                     String paramValue = request.getParameter(paramName);
 
                     if (paramValue != null) {
-                        args[i] = convertParameter(parameters[i].getType(), paramValue);
+                        args[i] = convertParameter(paramValue, parameters[i].getType(), request, paramName);
                     } else {
                         args[i] = null;
                     }
@@ -45,22 +45,36 @@ public class Reflect {
         return method.invoke(instance, args);
     }
 
-    private static Object convertParameter(Class<?> type, String value) {
-        if (type.equals(String.class)) {
-            return value;
-        } else if (type.equals(int.class) || type.equals(Integer.class)) {
-            return Integer.parseInt(value);
-        } else if (type.equals(long.class) || type.equals(Long.class)) {
-            return Long.parseLong(value);
-        } else if (type.equals(double.class) || type.equals(Double.class)) {
-            return Double.parseDouble(value);
-        } else if (type.equals(float.class) || type.equals(Float.class)) {
-            return Float.parseFloat(value);
-        } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-            return Boolean.parseBoolean(value);
+    private static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) {
+        try {
+            if (type.equals(String.class)) {
+                return value;
+            } else if (type.equals(int.class) || type.equals(Integer.class)) {
+                return Integer.parseInt(value);
+            } else if (type.equals(long.class) || type.equals(Long.class)) {
+                return Long.parseLong(value);
+            } else if (type.equals(double.class) || type.equals(Double.class)) {
+                return Double.parseDouble(value);
+            } else if (type.equals(float.class) || type.equals(Float.class)) {
+                return Float.parseFloat(value);
+            } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+                return Boolean.parseBoolean(value);
+            } else {
+                Object instance = type.getDeclaredConstructor().newInstance();
+                Field[] fields = type.getDeclaredFields();
+                for (Field field : fields) {
+                    String fieldValue = request.getParameter(paramName + "." + field.getName());
+                    if (fieldValue != null) {
+                        field.setAccessible(true);
+                        field.set(instance, convertParameter(fieldValue, field.getType(), request, paramName + "." + field.getName()));
+                    }
+                }
+                return instance;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        // Ajoutez d'autres conversions si nécessaire
-        return null;
     }
 }
 
