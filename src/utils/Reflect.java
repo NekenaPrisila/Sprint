@@ -70,19 +70,14 @@ public class Reflect {
 
                     System.out.println("Parameter name: " + paramName + ", value: " + paramValue);
 
-                    if (paramValue != null) {
+                    if (!parameters[i].getType().isPrimitive()) {
+                        args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
+                    }
+                    else if (paramValue != null) {
                         args[i] = convertParameter(paramValue, parameters[i].getType(), request, paramName);
                     } else {
                         args[i] = null;
                     }
-                }else if (!parameters[i].getType().isPrimitive()){
-                    // Gestion des paramètres de type objet non annotés
-                    System.out.println("ato ah zao");
-                    String paramName = parameters[i].getName(); // Nom du paramètre
-                    System.out.println("anarana param : "+ paramName);
-
-                    args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
-
                 } else {
                     System.err.println("Parameter " + i + " is missing the @Param annotation.");
                     throw new Exception("ETU002669, add annotations to all parameters");
@@ -119,6 +114,7 @@ public class Reflect {
             } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
                 return Boolean.parseBoolean(value);
             } else {
+                System.out.println("ito ndray zao");
                 Object instance = type.getDeclaredConstructor().newInstance();
                 Field[] fields = type.getDeclaredFields();
                 for (Field field : fields) {
