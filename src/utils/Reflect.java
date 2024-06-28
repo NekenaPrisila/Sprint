@@ -7,9 +7,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.lang.reflect.*;
 import annotations.Param;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-
 public class Reflect {
     public static Object executeMethod(Mapping mapping, HttpServletRequest request, HttpServletResponse response) throws Exception {
         Class<?> clazz;
@@ -78,6 +75,14 @@ public class Reflect {
                     } else {
                         args[i] = null;
                     }
+                }else if (!parameters[i].getType().isPrimitive()){
+                    // Gestion des paramètres de type objet non annotés
+                    System.out.println("ato ah zao");
+                    String paramName = parameters[i].getName(); // Nom du paramètre
+                    System.out.println("anarana param : "+ paramName);
+
+                    args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
+
                 } else {
                     System.err.println("Parameter " + i + " is missing the @Param annotation.");
                     throw new Exception("ETU002669, add annotations to all parameters");
