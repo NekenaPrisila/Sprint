@@ -34,7 +34,6 @@ public class FrontController extends HttpServlet {
                         GET getAnnotation = method.getAnnotation(GET.class);
                         String url = getAnnotation.value();
                         
-                        // Check if the URL is already mapped
                         if (urlMappings.containsKey(url)) {
                             String errorMessage = "Error: URL " + url + " is mapped twice: " + 
                             urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
@@ -84,9 +83,9 @@ public class FrontController extends HttpServlet {
             throw new ServletException("Error: No controllers found in package " + controllerPackage);
         }
         
-        // Log mappings
-        System.out.println("Loaded URL Mappings:");
-        urlMappings.forEach((key, value) -> System.out.println(key + " -> " + value.getClassName() + "#" + value.getMethodName()));
+        // // Log mappings
+        // System.out.println("Loaded URL Mappings:");
+        // urlMappings.forEach((key, value) -> System.out.println(key + " -> " + value.getClassName() + "#" + value.getMethodName()));
     }
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -111,16 +110,18 @@ public class FrontController extends HttpServlet {
                 
                 Object result = Reflect.executeMethod(mapping, req, resp);
                 out.println("Executed method result class name: " + result.getClass().getName());
-        
+      
                 if (result instanceof String) {
                     out.println((String) result);
                 } else if (result instanceof ModelView) {
+                    resp.setContentType("text/html");
                     ModelView mv = (ModelView) result;
 
                     out.println("ModelView URL: " + mv.getUrl());
                     
                     mv.getData().forEach((key, value) -> req.setAttribute(key, value));
                     req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+
                 } else {
                     throw new ServletException("Unsupported return type: " + result.getClass().getName());
                 }
@@ -137,7 +138,6 @@ public class FrontController extends HttpServlet {
         }
     }
         
-    
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
     }
