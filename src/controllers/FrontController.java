@@ -82,10 +82,6 @@ public class FrontController extends HttpServlet {
         if (urlMappings.isEmpty()) {
             throw new ServletException("Error: No controllers found in package " + controllerPackage);
         }
-        
-        // // Log mappings
-        // System.out.println("Loaded URL Mappings:");
-        // urlMappings.forEach((key, value) -> System.out.println(key + " -> " + value.getClassName() + "#" + value.getMethodName()));
     }
 
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
