@@ -1,8 +1,8 @@
 package utils;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.lang.reflect.*;
 import annotations.Param;
@@ -78,6 +78,9 @@ public class Reflect {
                     } else {
                         args[i] = null;
                     }
+                } else if (parameters[i].getType().equals(SessionManager.class)) {
+                    HttpSession httpSession = request.getSession();
+                    args[i] = new SessionManager(httpSession);
                 } else {
                     System.err.println("Parameter " + i + " is missing the @Param annotation.");
                     throw new Exception("ETU002669, add annotations to all parameters");
@@ -132,4 +135,3 @@ public class Reflect {
         }
     }
 }
-

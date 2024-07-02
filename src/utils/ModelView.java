@@ -11,6 +11,9 @@ public class ModelView {
         setData(data);
     }
 
+    public ModelView() {
+    }
+
     public ModelView(String url) {
         setUrl(url);
     }
