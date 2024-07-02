@@ -70,11 +70,10 @@ public class Reflect {
 
                     System.out.println("Parameter name: " + paramName + ", value: " + paramValue);
 
-                    if (!parameters[i].getType().isPrimitive()) {
-                        args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
-                    }
-                    else if (paramValue != null) {
+                    if (paramValue != null || parameters[i].getType().isPrimitive() || parameters[i].getType().equals(String.class)) {
                         args[i] = convertParameter(paramValue, parameters[i].getType(), request, paramName);
+                    }else if (!parameters[i].getType().isPrimitive()) {
+                        args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
                     } else {
                         args[i] = null;
                     }
@@ -131,6 +130,7 @@ public class Reflect {
             }
         } catch (Exception e) {
             e.printStackTrace();
+            System.out.println("eto misy erreur: " + e.getMessage());
             return null;
         }
     }
