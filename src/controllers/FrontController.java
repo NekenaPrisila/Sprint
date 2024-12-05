@@ -16,6 +16,7 @@ import utils.ModelView;
 import utils.Reflect;
 import annotations.AnnotationController;
 import annotations.GET;
+import annotations.POST;
 
 public class FrontController extends HttpServlet {
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
@@ -30,19 +31,18 @@ public class FrontController extends HttpServlet {
             Class<?> clazz = Class.forName(className);
             if (clazz.isAnnotationPresent(AnnotationController.class)) {
                 for (Method method : clazz.getDeclaredMethods()) {
+                    // Gérer les annotations GET
                     if (method.isAnnotationPresent(GET.class)) {
                         GET getAnnotation = method.getAnnotation(GET.class);
                         String url = getAnnotation.value();
-                        
-                        if (urlMappings.containsKey(url)) {
-                            String errorMessage = "Error: URL " + url + " is mapped twice: " + 
-                            urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
-                            " and " + clazz.getName() + "#" + method.getName() + ".";      
-                            throw new ServletException(errorMessage);
-                        } else {
-                            Mapping mapping = new Mapping(clazz.getName(), method.getName());
-                            urlMappings.put(url, mapping);
-                        }
+                        mapUrlToMethod(clazz, method, url);
+                    }
+
+                    // Gérer les annotations POST
+                    if (method.isAnnotationPresent(POST.class)) {
+                        POST postAnnotation = method.getAnnotation(POST.class);
+                        String url = postAnnotation.value();
+                        mapUrlToMethod(clazz, method, url);
                     }
                 }
             }
@@ -51,6 +51,20 @@ public class FrontController extends HttpServlet {
             throw new ServletException(errorMessage, e);
         }
     }
+
+    private void mapUrlToMethod(Class<?> clazz, Method method, String url) throws ServletException {
+        if (urlMappings.containsKey(url)) {
+            String errorMessage = "Error: URL " + url + " is mapped twice: " +
+                    urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() +
+                    " and " + clazz.getName() + "#" + method.getName() + ".";
+            throw new ServletException(errorMessage);
+        } else {
+            Mapping mapping = new Mapping(clazz.getName(), method.getName());
+            urlMappings.put(url, mapping);
+        }
+    }
+    
+
 
     private void findClassesInDirectory(String packageName, File directory) throws ServletException {
         for (File file : Objects.requireNonNull(directory.listFiles())) {
@@ -88,38 +102,43 @@ public class FrontController extends HttpServlet {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
-
-        // Extract the URL without query parameters
-        String method = relativeUrl.split("\\?")[0];
-        
-        if (method.startsWith("/")) {
-            method = method.substring(1);
+    
+        // Extraire le chemin sans les paramètres
+        String methodUrl = relativeUrl.split("\\?")[0];
+        if (methodUrl.startsWith("/")) {
+            methodUrl = methodUrl.substring(1);
         }
+    
         PrintWriter out = resp.getWriter();
         try {
             out.println("URL: " + url);
-            out.println("Method: " + method);
-        
-            Mapping mapping = urlMappings.get(method);
+            out.println("Method URL: " + methodUrl);
+    
+            Mapping mapping = urlMappings.get(methodUrl);
             if (mapping != null) {
-                out.println("Method found: " + mapping);
-                
-                Object result = Reflect.executeMethod(mapping, req, resp);
-                out.println("Executed method result class name: " + result.getClass().getName());
-      
-                if (result instanceof String) {
-                    out.println((String) result);
-                } else if (result instanceof ModelView) {
-                    resp.setContentType("text/html");
-                    ModelView mv = (ModelView) result;
-
-                    out.println("ModelView URL: " + mv.getUrl());
-                    
-                    mv.getData().forEach((key, value) -> req.setAttribute(key, value));
-                    req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
-
+                // Vérifier la méthode HTTP
+                if ((req.getMethod().equalsIgnoreCase("GET") && mapping.getMethodName().startsWith("get")) ||
+                    (req.getMethod().equalsIgnoreCase("POST") && mapping.getMethodName().startsWith("post"))) {
+    
+                    Object result = Reflect.executeMethod(mapping, req, resp);
+                    out.println("Executed method result class name: " + result.getClass().getName());
+    
+                    if (result instanceof String) {
+                        out.println((String) result);
+                    } else if (result instanceof ModelView) {
+                        resp.setContentType("text/html");
+                        ModelView mv = (ModelView) result;
+    
+                        out.println("ModelView URL: " + mv.getUrl());
+    
+                        mv.getData().forEach(req::setAttribute);
+                        req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+    
+                    } else {
+                        throw new ServletException("Unsupported return type: " + result.getClass().getName());
+                    }
                 } else {
-                    throw new ServletException("Unsupported return type: " + result.getClass().getName());
+                    throw new ServletException("Unsupported HTTP method for URL: " + methodUrl);
                 }
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
@@ -133,6 +152,7 @@ public class FrontController extends HttpServlet {
             out.println(e.getMessage());
         }
     }
+    
         
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
