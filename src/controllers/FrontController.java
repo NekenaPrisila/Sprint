@@ -13,11 +13,13 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import utils.HttpMethod;
 import utils.Mapping;
 import utils.ModelView;
 import utils.Reflect;
 import annotations.AnnotationController;
 import annotations.GET;
+import annotations.POST;
 import annotations.RestController;
 import annotations.RestEndPoint;
 
@@ -37,17 +39,31 @@ public class FrontController extends HttpServlet {
                     if (method.isAnnotationPresent(GET.class)) {
                         GET getAnnotation = method.getAnnotation(GET.class);
                         String url = getAnnotation.value();
-                        
                         if (urlMappings.containsKey(url)) {
                             String errorMessage = "Error: URL " + url + " is mapped twice: " + 
                             urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
                             " and " + clazz.getName() + "#" + method.getName() + ".";      
                             throw new ServletException(errorMessage);
                         } else {
-                            Mapping mapping = new Mapping(clazz.getName(), method.getName());
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.GET);
                             urlMappings.put(url, mapping);
                         }
                     }
+                    // Ajout pour POST
+                    if (method.isAnnotationPresent(POST.class)) {
+                        POST postAnnotation = method.getAnnotation(POST.class);
+                        String url = postAnnotation.value();
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " + 
+                            urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
+                            " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            throw new ServletException(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.POST);
+                            urlMappings.put(url, mapping);
+                        }
+                    }
+                    // Ajouter des vérifications pour PUT, DELETE si nécessaire
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -92,8 +108,11 @@ public class FrontController extends HttpServlet {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
-
-        // Extract the URL without query parameters
+    
+        // Extraire le verbe HTTP de la requête
+        HttpMethod requestMethod = HttpMethod.valueOf(req.getMethod().toUpperCase());  // GET, POST, etc.
+        
+        // Extraire l'URL sans les paramètres de la requête
         String method = relativeUrl.split("\\?")[0];
         
         if (method.startsWith("/")) {
@@ -102,32 +121,28 @@ public class FrontController extends HttpServlet {
         PrintWriter out = resp.getWriter();
         try {
             Mapping mapping = urlMappings.get(method);
-            if (mapping != null) {
+            if (mapping != null && mapping.getHttpMethod() == requestMethod) {  // Vérifier que le verbe correspond
                 Class<?> clazz = Class.forName(mapping.getClassName());
                 Method targetMethod = clazz.getDeclaredMethod(mapping.getMethodName());
-
+    
                 boolean isRestController = clazz.isAnnotationPresent(RestController.class);
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
-
-                // Execute the method and get the result
+    
+                // Exécution de la méthode et récupération du résultat
                 Object result = Reflect.executeMethod(mapping, req, resp);
-
+    
                 if (isRestController && isRestEndPoint) {
-                    // Set response type to JSON
                     resp.setContentType("application/json");
                     Gson gson = new Gson();
-                    // If the result is a ModelView, serialize its data attribute
                     if (result instanceof ModelView) {
                         ModelView mv = (ModelView) result;
                         String jsonResponse = gson.toJson(mv.getData());
                         out.println(jsonResponse);
                     } else {
-                        // Serialize the result directly
                         String jsonResponse = gson.toJson(result);
                         out.println(jsonResponse);
                     }
                 } else {
-                    // Handle as regular view rendering
                     if (result instanceof ModelView) {
                         resp.setContentType("text/html");
                         ModelView mv = (ModelView) result;
@@ -140,13 +155,13 @@ public class FrontController extends HttpServlet {
                 }
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                out.println("No method associated with this URL");
+                out.println("No method associated with this URL or wrong HTTP method");
             }
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.println(e.getMessage());
         }
-    }
+    }    
         
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
