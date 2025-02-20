@@ -118,20 +118,25 @@ public class FrontController extends HttpServlet {
         if (method.startsWith("/")) {
             method = method.substring(1);
         }
+    
         PrintWriter out = resp.getWriter();
         try {
+            // Chercher le mappage pour l'URL (sans paramètres de requête)
             Mapping mapping = urlMappings.get(method);
+            
             if (mapping != null && mapping.getHttpMethod() == requestMethod) {  // Vérifier que le verbe correspond
+                // Trouver la classe et la méthode associée au mappage
                 Class<?> clazz = Class.forName(mapping.getClassName());
                 Method targetMethod = clazz.getDeclaredMethod(mapping.getMethodName());
-    
+        
                 boolean isRestController = clazz.isAnnotationPresent(RestController.class);
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
-    
+        
                 // Exécution de la méthode et récupération du résultat
                 Object result = Reflect.executeMethod(mapping, req, resp);
-    
+        
                 if (isRestController && isRestEndPoint) {
+                    // Si c'est un contrôleur REST, renvoyer la réponse en JSON
                     resp.setContentType("application/json");
                     Gson gson = new Gson();
                     if (result instanceof ModelView) {
@@ -143,25 +148,33 @@ public class FrontController extends HttpServlet {
                         out.println(jsonResponse);
                     }
                 } else {
+                    // Si c'est un retour classique avec un ModelView
                     if (result instanceof ModelView) {
                         resp.setContentType("text/html");
                         ModelView mv = (ModelView) result;
                         mv.getData().forEach((key, value) -> req.setAttribute(key, value));
                         req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
                     } else {
+                        // Si le résultat n'est pas un ModelView, retourner le résultat brut
                         resp.setStatus(HttpServletResponse.SC_OK);
                         out.println(result.toString());
                     }
                 }
             } else {
+                // Si aucun mappage trouvé ou mauvais verbe HTTP, retourner une erreur 404
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 out.println("No method associated with this URL or wrong HTTP method");
             }
-        } catch (Exception e) {
+        } catch (ClassNotFoundException | NoSuchMethodException e) {
+            // Gestion des exceptions liées à la réflexion
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            out.println(e.getMessage());
+            out.println("Error while processing the request: " + e.getMessage());
+        } catch (Exception e) {
+            // Gestion d'autres exceptions générales
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            out.println("Internal server error: " + e.getMessage());
         }
-    }    
+    }      
         
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         processRequested(req, resp);
