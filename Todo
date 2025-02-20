@@ -2,112 +2,112 @@
 
 ## Sprint 0 (FrontController)
 
-- [x] Servlet FrontController  
-  - [x] Méthode `processRequest`  
-- [x] Script de création du fichier JAR  
+- Servlet FrontController  
+  - Méthode `processRequest`  
+- Script de création du fichier JAR  
 
 ## Sprint 1 (Liste des contrôleurs)
 
-- [x] Annotation `@Controller`  
-- [x] Scanner le package spécifié par l'utilisateur pour récupérer la liste des contrôleurs  
-- [x] Afficher la liste des contrôleurs pour toutes les URLs  
-- [x] Indiquer à l'utilisateur comment spécifier le package à scanner dans `web.xml`  
+- Annotation `@Controller`  
+- Scanner le package spécifié par l'utilisateur pour récupérer la liste des contrôleurs  
+- Afficher la liste des contrôleurs pour toutes les URLs  
+- Indiquer à l'utilisateur comment spécifier le package à scanner dans `web.xml`  
 
 ## Sprint 2 (Mappage des URLs vers chaque serveur)
 
-- [x] Récupérer l'URL relative (la partie de l’URL après l’URL de base)  
-- [x] Annotation `@GetMapping`  
-- [x] Mapper les URLs aux méthodes des contrôleurs  
-- [x] Exception `URL not found`  
-- [x] Éviter le double mappage d’URL (1 URL mappée à plusieurs méthodes de contrôleurs)  
+- Récupérer l'URL relative (la partie de l’URL après l’URL de base)  
+- Annotation `@GetMapping`  
+- Mapper les URLs aux méthodes des contrôleurs  
+- Exception `URL not found`  
+- Éviter le double mappage d’URL (1 URL mappée à plusieurs méthodes de contrôleurs)  
 
 ## Sprint 3 (Affichage du retour des méthodes des contrôleurs)
 
-- [x] Instanciation des contrôleurs (modèle Singleton)  
-- [x] Invocation des méthodes  
+- Instanciation des contrôleurs (modèle Singleton)  
+- Invocation des méthodes  
 
 ## Sprint 4 (ModelView)
 
-- [x] Classe `ModelView`  
-  - [x] Attribut `String url`  
-  - [x] Attribut `HashMap<String, Object> data`  
-- [x] Associer les attributs à la requête  
-- [x] Transférer la requête vers la vue  
+- Classe `ModelView`  
+  - Attribut `String url`  
+  - Attribut `HashMap<String, Object> data`  
+- Associer les attributs à la requête  
+- Transférer la requête vers la vue  
 
 ## Sprint 5 (Gestion des erreurs)
 
-- [x] Package du contrôleur inexistant  
-- [x] Package du contrôleur vide  
-- [x] Mappage d’URL similaire  
-- [x] URL non trouvée  
-- [x] Type de retour de méthode non pris en charge  
+- Package du contrôleur inexistant  
+- Package du contrôleur vide  
+- Mappage d’URL similaire  
+- URL non trouvée  
+- Type de retour de méthode non pris en charge  
 
 ## Sprint 6 (Liaison des paramètres de requête)
 
-- [x] Récupérer la liste des paramètres pour chaque méthode mappée  
-- [x] Récupérer les noms des paramètres  
-- [x] Lier les paramètres de la méthode aux paramètres de la requête par convention (liaison par nom)  
-- [x] Lier les paramètres de la requête à l’aide d’une annotation  
+- Récupérer la liste des paramètres pour chaque méthode mappée  
+- Récupérer les noms des paramètres  
+- Lier les paramètres de la méthode aux paramètres de la requête par convention (liaison par nom)  
+- Lier les paramètres de la requête à l’aide d’une annotation  
 
 ## Sprint 7 (Liaison des paramètres de requête pour les objets)
 
-- [x] Rechercher les noms des champs de l’objet paramètre  
-- [x] Récupérer leurs valeurs depuis la requête  
-- [x] Créer une annotation pour les champs des objets paramètres
-- [x] Générer une erreur lorsque le paramètre de l’endpoint n’est pas annoté  
+- Rechercher les noms des champs de l’objet paramètre  
+- Récupérer leurs valeurs depuis la requête  
+- Créer une annotation pour les champs des objets paramètres
+- Générer une erreur lorsque le paramètre de l’endpoint n’est pas annoté  
 
 ## Sprint 8 (Session personnalisée)
 
-- [x] Créer la classe `Session`  
-- [x] Injecter l’instance de la session dans les instances des contrôleurs  
+- Créer la classe `SessionManager`  
+- Injecter l’instance de la session dans les instances des contrôleurs  
 
 ## Sprint 9 (API)
 
-- [x] Créer l’annotation `@RestController`  
-- [x] Créer l’annotation `@RestEndPoint`  
-- [x] Dans `FrontServlet`, vérifier si les contrôleurs ou méthodes sont annotés  
-  - [x] Lors de l’invocation de la méthode du contrôleur, renvoyer une réponse JSON si c’est le cas  
-    - [x] Sérialiser l’attribut `data` si l’objet est une instance de `ModelView`  
-      - [x] Sinon, le sérialiser immédiatement  
+- Créer l’annotation `@RestController`  
+- Créer l’annotation `@RestEndPoint`  
+- Dans `FrontServlet`, vérifier si les contrôleurs ou méthodes sont annotés  
+  - Lors de l’invocation de la méthode du contrôleur, renvoyer une réponse JSON si c’est le cas  
+    - Sérialiser l’attribut `data` si l’objet est une instance de `ModelView`  
+      - Sinon, le sérialiser immédiatement  
 
 ## Sprint 10 (VERBE POST)
 
-- [x] Enumération des verbes de requête  
-- [x] Gestion du `HashMap` Verbe - Méthode dans la classe `Mapping`  
+- Enumération des verbes de requête  
+- Gestion du `HashMap` Verbe - Méthode dans la classe `Mapping`  
 
 ## Sprint 11 (Erreur 404 : Verbe non supporté)
 
-- [x] Envoyer un code statut 404 lorsque le verbe n’est pas associé à l’URL spécifiée  
+- Envoyer un code statut 404 lorsque le verbe n’est pas associé à l’URL spécifiée  
 
 ## Sprint 12 (Upload de fichiers)
 
-- [x] Classe `WinterPart`  
-- [x] Upload de fichiers sur le serveur  
-- [x] Affichage des ressources statiques  
+- Classe `WinterPart`  
+- Upload de fichiers sur le serveur  
+- Affichage des ressources statiques  
 
 ## Sprint 13 (Validation des paramètres de requête)
 
-- [x] Déplacer la vérification de l’annotation `@RequestParameter`  
-- [x] Créer les annotations nécessaires  
-  - [x] `@Required`  
-  - [x] `@NotBlank`  
-  - [x] `@Range`  
-- [x] Générer une erreur lorsqu’un paramètre n’est pas valide  
+- Déplacer la vérification de l’annotation `@RequestParameter`  
+- Créer les annotations nécessaires  
+  - `@Required`  
+  - `@NotBlank`  
+  - `@Range`  
+- Générer une erreur lorsqu’un paramètre n’est pas valide  
 
 ## Sprint 14 (Redirection vers une URL d’erreur si les paramètres ne sont pas validés)
 
-- [x] Annotation `@ErrorURL`  
-- [x] Rediriger vers l’URL d’erreur avec tous les messages d’erreur des champs  
-- [x] Pré-remplir les valeurs du formulaire  
-- [x] Conversion de types (entiers et décimaux)  
-- [x] Mise à jour du `README`  
+- Annotation `@ErrorURL`  
+- Rediriger vers l’URL d’erreur avec tous les messages d’erreur des champs  
+- Pré-remplir les valeurs du formulaire  
+- Conversion de types (entiers et décimaux)  
+- Mise à jour du `README`  
 
 ## Sprint 15 (Authentification)
 
-- [x] Annotation `@Authenticated`  
-- [x] Prétraitement des requêtes dirigées vers les URLs annotées  
+- Annotation `@Authenticated`  
+- Prétraitement des requêtes dirigées vers les URLs annotées  
 
 ## Sprint 16 (Authentification basée sur le contrôleur)
 
-- [x] Annotation `@Public`  
-- [x] Gestion de l’authentification des contrôleurs
+- Annotation `@Public`  
+- Gestion de l’authentification des contrôleurs

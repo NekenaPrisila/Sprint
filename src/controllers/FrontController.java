@@ -7,6 +7,8 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Objects;
 
+import com.google.gson.Gson;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +18,8 @@ import utils.ModelView;
 import utils.Reflect;
 import annotations.AnnotationController;
 import annotations.GET;
+import annotations.RestController;
+import annotations.RestEndPoint;
 
 public class FrontController extends HttpServlet {
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
@@ -97,37 +101,47 @@ public class FrontController extends HttpServlet {
         }
         PrintWriter out = resp.getWriter();
         try {
-            out.println("URL: " + url);
-            out.println("Method: " + method);
-        
             Mapping mapping = urlMappings.get(method);
             if (mapping != null) {
-                out.println("Method found: " + mapping);
-                
+                Class<?> clazz = Class.forName(mapping.getClassName());
+                Method targetMethod = clazz.getDeclaredMethod(mapping.getMethodName());
+
+                boolean isRestController = clazz.isAnnotationPresent(RestController.class);
+                boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
+
+                // Execute the method and get the result
                 Object result = Reflect.executeMethod(mapping, req, resp);
-                out.println("Executed method result class name: " + result.getClass().getName());
-      
-                if (result instanceof String) {
-                    out.println((String) result);
-                } else if (result instanceof ModelView) {
-                    resp.setContentType("text/html");
-                    ModelView mv = (ModelView) result;
 
-                    out.println("ModelView URL: " + mv.getUrl());
-                    
-                    mv.getData().forEach((key, value) -> req.setAttribute(key, value));
-                    req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
-
+                if (isRestController && isRestEndPoint) {
+                    // Set response type to JSON
+                    resp.setContentType("application/json");
+                    Gson gson = new Gson();
+                    // If the result is a ModelView, serialize its data attribute
+                    if (result instanceof ModelView) {
+                        ModelView mv = (ModelView) result;
+                        String jsonResponse = gson.toJson(mv.getData());
+                        out.println(jsonResponse);
+                    } else {
+                        // Serialize the result directly
+                        String jsonResponse = gson.toJson(result);
+                        out.println(jsonResponse);
+                    }
                 } else {
-                    throw new ServletException("Unsupported return type: " + result.getClass().getName());
+                    // Handle as regular view rendering
+                    if (result instanceof ModelView) {
+                        resp.setContentType("text/html");
+                        ModelView mv = (ModelView) result;
+                        mv.getData().forEach((key, value) -> req.setAttribute(key, value));
+                        req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+                    } else {
+                        resp.setStatus(HttpServletResponse.SC_OK);
+                        out.println(result.toString());
+                    }
                 }
             } else {
                 resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 out.println("No method associated with this URL");
             }
-        } catch (ServletException e) {
-            resp.setStatus(HttpServletResponse.SC_NOT_FOUND);
-            out.println(e.getMessage());
         } catch (Exception e) {
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.println(e.getMessage());
