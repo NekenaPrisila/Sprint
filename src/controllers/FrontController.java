@@ -66,6 +66,39 @@ public class FrontController extends HttpServlet {
                     // Ajouter des vérifications pour PUT, DELETE si nécessaire
                 }
             }
+            if (clazz.isAnnotationPresent(RestController.class)) {
+                System.out.println("yeeesss Api ny ato");
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.isAnnotationPresent(GET.class)) {
+                        GET getAnnotation = method.getAnnotation(GET.class);
+                        String url = getAnnotation.value();
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " +
+                            urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() +
+                            " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            throw new ServletException(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.GET);
+                            urlMappings.put(url, mapping);
+                        }
+                    }
+
+                    if (method.isAnnotationPresent(POST.class)) {
+                        POST postAnnotation = method.getAnnotation(POST.class);
+                        String url = postAnnotation.value();
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " + 
+                                urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
+                                " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            throw new ServletException(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.POST);
+                            urlMappings.put(url, mapping);
+                        }
+                    }
+                    
+                }
+            } 
         } catch (ClassNotFoundException e) {
             String errorMessage = "Class not found: " + className;
             throw new ServletException(errorMessage, e);
@@ -118,16 +151,30 @@ public class FrontController extends HttpServlet {
         if (method.startsWith("/")) {
             method = method.substring(1);
         }
+
+        System.out.println("itoo ilay methode"+ method);
     
         PrintWriter out = resp.getWriter();
         try {
             // Chercher le mappage pour l'URL (sans paramètres de requête)
             Mapping mapping = urlMappings.get(method);
+
+            System.out.println("mapingggg"+ mapping);
             
             if (mapping != null && mapping.getHttpMethod() == requestMethod) {  // Vérifier que le verbe correspond
                 // Trouver la classe et la méthode associée au mappage
                 Class<?> clazz = Class.forName(mapping.getClassName());
-                Method targetMethod = clazz.getDeclaredMethod(mapping.getMethodName());
+                Method targetMethod = null;
+                for (Method m : clazz.getDeclaredMethods()) {
+                    if (m.getName().equals(mapping.getMethodName())) {
+                        System.out.println("ity tena methodeee" + m.getName());
+                        targetMethod = m;
+                        break;
+                    }
+                }
+                if (targetMethod == null) {
+                    throw new NoSuchMethodException("Méthode introuvable : " + mapping.getMethodName());
+                }
         
                 boolean isRestController = clazz.isAnnotationPresent(RestController.class);
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
