@@ -3,8 +3,11 @@ package utils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.Part;
 
 import java.lang.reflect.*;
+
+import annotations.FileRequest;
 import annotations.Param;
 
 public class Reflect {
@@ -77,6 +80,16 @@ public class Reflect {
                     } else {
                         args[i] = null;
                     }
+                }        
+                // Traitement des fichiers annotés avec @FileRequest
+                else if (parameters[i].isAnnotationPresent(FileRequest.class)) {
+                    FileRequest fileRequest = parameters[i].getAnnotation(FileRequest.class);
+                    String paramName = fileRequest.name();
+
+                    WinterPart file = new WinterPart(request.getPart(paramName));
+                    // Affecter le fichier au paramètre
+                    args[i] = file;
+                    
                 } else if (parameters[i].getType().equals(SessionManager.class)) {
                     HttpSession httpSession = request.getSession();
                     args[i] = new SessionManager(httpSession);
