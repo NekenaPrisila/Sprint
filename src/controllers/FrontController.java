@@ -10,6 +10,7 @@ import java.util.Objects;
 import com.google.gson.Gson;
 
 import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,7 +24,9 @@ import annotations.POST;
 import annotations.RestController;
 import annotations.RestEndPoint;
 
+@MultipartConfig
 public class FrontController extends HttpServlet {
+    public static final String STATIC_DIRECTORY = "static";
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
 
     public void init() throws ServletException {
@@ -64,6 +67,38 @@ public class FrontController extends HttpServlet {
                         }
                     }
                     // Ajouter des vérifications pour PUT, DELETE si nécessaire
+                }
+            }
+            if (clazz.isAnnotationPresent(RestController.class)) {
+                for (Method method : clazz.getDeclaredMethods()) {
+                    if (method.isAnnotationPresent(GET.class)) {
+                        GET getAnnotation = method.getAnnotation(GET.class);
+                        String url = getAnnotation.value();
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " +
+                            urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() +
+                            " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            throw new ServletException(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.GET);
+                            urlMappings.put(url, mapping);
+                        }
+                    }
+
+                    if (method.isAnnotationPresent(POST.class)) {
+                        POST postAnnotation = method.getAnnotation(POST.class);
+                        String url = postAnnotation.value();
+                        if (urlMappings.containsKey(url)) {
+                            String errorMessage = "Error: URL " + url + " is mapped twice: " + 
+                                urlMappings.get(url).getClassName() + "#" + urlMappings.get(url).getMethodName() + 
+                                " and " + clazz.getName() + "#" + method.getName() + ".";      
+                            throw new ServletException(errorMessage);
+                        } else {
+                            Mapping mapping = new Mapping(clazz.getName(), method.getName(), HttpMethod.POST);
+                            urlMappings.put(url, mapping);
+                        }
+                    }
+                    
                 }
             }
         } catch (ClassNotFoundException e) {
@@ -108,6 +143,8 @@ public class FrontController extends HttpServlet {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
+
+        System.out.println("testttt"+relativeUrl);
     
         // Extraire le verbe HTTP de la requête
         HttpMethod requestMethod = HttpMethod.valueOf(req.getMethod().toUpperCase());  // GET, POST, etc.
@@ -123,11 +160,20 @@ public class FrontController extends HttpServlet {
         try {
             // Chercher le mappage pour l'URL (sans paramètres de requête)
             Mapping mapping = urlMappings.get(method);
-            
+
             if (mapping != null && mapping.getHttpMethod() == requestMethod) {  // Vérifier que le verbe correspond
                 // Trouver la classe et la méthode associée au mappage
                 Class<?> clazz = Class.forName(mapping.getClassName());
-                Method targetMethod = clazz.getDeclaredMethod(mapping.getMethodName());
+                Method targetMethod = null;
+                for (Method m : clazz.getDeclaredMethods()) {
+                    if (m.getName().equals(mapping.getMethodName())) {
+                        targetMethod = m;
+                        break;
+                    }
+                }
+                if (targetMethod == null) {
+                    throw new NoSuchMethodException("Méthode introuvable : " + mapping.getMethodName());
+                }
         
                 boolean isRestController = clazz.isAnnotationPresent(RestController.class);
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
