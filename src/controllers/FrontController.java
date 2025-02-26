@@ -26,7 +26,6 @@ import annotations.RestEndPoint;
 
 @MultipartConfig
 public class FrontController extends HttpServlet {
-    public static final String STATIC_DIRECTORY = "static";
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
 
     public void init() throws ServletException {
@@ -139,7 +138,7 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws Exception {
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
@@ -179,7 +178,7 @@ public class FrontController extends HttpServlet {
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
         
                 // Exécution de la méthode et récupération du résultat
-                Object result = Reflect.executeMethod(mapping, req, resp);
+                Object result = Reflect.executeMethod(mapping, req, resp, getServletContext());
         
                 if (isRestController && isRestEndPoint) {
                     // Si c'est un contrôleur REST, renvoyer la réponse en JSON
@@ -219,14 +218,23 @@ public class FrontController extends HttpServlet {
             // Gestion d'autres exceptions générales
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.println("Internal server error: " + e.getMessage());
+            throw new Exception();            
         }
     }      
         
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequested(req, resp);
+        try {
+            processRequested(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequested(req, resp);
+        try {
+            processRequested(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
