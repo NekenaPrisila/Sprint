@@ -144,7 +144,7 @@ public class FrontController extends HttpServlet {
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
 
-        System.out.println("testttt"+relativeUrl);
+        System.out.println("chemin: " + relativeUrl);
     
         // Extraire le verbe HTTP de la requête
         HttpMethod requestMethod = HttpMethod.valueOf(req.getMethod().toUpperCase());  // GET, POST, etc.
