@@ -3,6 +3,7 @@ package utils;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.lang.reflect.*;
 import annotations.FileRequest;
 import annotations.Param;
@@ -18,10 +19,8 @@ public class Reflect {
             instance = clazz.getDeclaredConstructor().newInstance();
             System.out.println("Instance created: " + instance);
         }catch (ClassNotFoundException e) {
-            System.err.println("Class not found: " + mapping.getClassName());
             throw new Exception("Class not found: " + mapping.getClassName(), e);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            System.err.println("Error creating instance of: " + mapping.getClassName());
             throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
         } catch (Exception e) {
             throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
