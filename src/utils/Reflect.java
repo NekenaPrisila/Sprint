@@ -2,10 +2,7 @@ package utils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
 import java.lang.reflect.*;
-
 import annotations.FileRequest;
 import annotations.Param;
 
@@ -19,131 +16,78 @@ public class Reflect {
             clazz = Class.forName(mapping.getClassName());
             instance = clazz.getDeclaredConstructor().newInstance();
             System.out.println("Instance created: " + instance);
-        } catch (ClassNotFoundException e) {
+        }catch (ClassNotFoundException e) {
             System.err.println("Class not found: " + mapping.getClassName());
             throw new Exception("Class not found: " + mapping.getClassName(), e);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
             System.err.println("Error creating instance of: " + mapping.getClassName());
             throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
+        } catch (Exception e) {
+            throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
         }
 
-        System.out.println("Available methods in class " + mapping.getClassName() + ":");
-        Method[] methods = clazz.getDeclaredMethods();
-        for (Method m : methods) {
-            System.out.println(m.getName() + " with parameters:");
-            for (Parameter p : m.getParameters()) {
-                System.out.println("  " + p.getType().getName() + " " + p.getName());
-            }
-        }
-
-        try {
-            System.out.println("Attempting to get method: " + mapping.getMethodName());
-            method = null;
-            for (Method m : methods) {
-                if (m.getName().equals(mapping.getMethodName())) {
-                    method = m;
-                    break;
-                }
-            }
-            if (method == null) {
-                throw new NoSuchMethodException(mapping.getMethodName());
-            }
-            System.out.println("Method obtained: " + method);
-        } catch (NoSuchMethodException e) {
-            System.err.println("Method not found: " + mapping.getMethodName() + " in class " + mapping.getClassName());
-            throw new Exception("Method not found: " + mapping.getMethodName() + " in class " + mapping.getClassName(), e);
-        }
-
+        method = findMethod(clazz, mapping.getMethodName());
+        System.out.println("Method obtained: " + method);
+        
         Parameter[] parameters = method.getParameters();
         System.out.println("Number of parameters: " + parameters.length);
-
-        for (int i = 0; i < parameters.length; i++) {
-            System.out.println("Parameter " + i + ": " + parameters[i]);
-        }
-
         Object[] args = new Object[parameters.length];
-
-        if (parameters.length > 0) {
-            for (int i = 0; i < parameters.length; i++) {
-                if (parameters[i].isAnnotationPresent(Param.class)) {
-                    Param param = parameters[i].getAnnotation(Param.class);
-                    String paramName = param.name();
-                    String paramValue = request.getParameter(paramName);
-
-                    System.out.println("Parameter name: " + paramName + ", value: " + paramValue);
-
-                    if (paramValue != null || parameters[i].getType().isPrimitive() || parameters[i].getType().equals(String.class)) {
-                        args[i] = convertParameter(paramValue, parameters[i].getType(), request, paramName);
-                    }else if (!parameters[i].getType().isPrimitive()) {
-                        args[i] = convertParameter(null, parameters[i].getType(), request, paramName);
-                    } else {
-                        args[i] = null;
-                    }
-                }        
-                // Traitement des fichiers annotés avec @FileRequest
-                else if (parameters[i].isAnnotationPresent(FileRequest.class)) {
-                    FileRequest fileRequest = parameters[i].getAnnotation(FileRequest.class);
-                    String paramName = fileRequest.name();
-
-                    WinterPart file = new WinterPart(request.getPart(paramName));
-                    // Affecter le fichier au paramètre
-                    args[i] = file;
-                    
-                } else if (parameters[i].getType().equals(SessionManager.class)) {
-                    HttpSession httpSession = request.getSession();
-                    args[i] = new SessionManager(httpSession);
-                } else {
-                    System.err.println("Parameter " + i + " is missing the @Param annotation.");
-                    throw new Exception("ETU002669, add annotations to all parameters");
-                }
-            }
+        FieldErrors fieldErrors = new FieldErrors();
+        
+        for (int i = 0; i < parameters.length; i++) {
+            Object paramValue = extractParameterValue(parameters[i], request);
+            ParameterValidator.validateParameter(paramValue, parameters[i], fieldErrors);
+            args[i] = paramValue;
         }
-
-        System.out.println("Arguments: ");
-        for (Object arg : args) {
-            System.out.println(arg);
-        }
-
-        try {
-            System.out.println("Invoking method...");
-            return method.invoke(instance, args);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            System.err.println("Error invoking method: " + method);
-            throw new Exception("Error invoking method: " + method, e);
-        }
+        
+        // if (!fieldErrors.isEmpty()) {
+        //     throw new ValidationException(fieldErrors);
+        // }
+        
+        return method.invoke(instance, args);
     }
 
-    private static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) {
-        try {
-            if (type.equals(String.class)) {
-                return value;
-            } else if (type.equals(int.class) || type.equals(Integer.class)) {
-                return Integer.parseInt(value);
-            } else if (type.equals(long.class) || type.equals(Long.class)) {
-                return Long.parseLong(value);
-            } else if (type.equals(double.class) || type.equals(Double.class)) {
-                return Double.parseDouble(value);
-            } else if (type.equals(float.class) || type.equals(Float.class)) {
-                return Float.parseFloat(value);
-            } else if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-                return Boolean.parseBoolean(value);
-            } else {
-                System.out.println("ito ndray zao");
-                Object instance = type.getDeclaredConstructor().newInstance();
-                Field[] fields = type.getDeclaredFields();
-                for (Field field : fields) {
-                    String fieldValue = request.getParameter(paramName + "." + field.getName());
-                    if (fieldValue != null) {
-                        field.setAccessible(true);
-                        field.set(instance, convertParameter(fieldValue, field.getType(), request, paramName + "." + field.getName()));
-                    }
-                }
-                return instance;
+    private static Method findMethod(Class<?> clazz, String methodName) throws NoSuchMethodException {
+        for (Method method : clazz.getDeclaredMethods()) {
+            if (method.getName().equals(methodName)) {
+                return method;
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.out.println("eto misy erreur: " + e.getMessage());
-            return null;
         }
+        throw new NoSuchMethodException("Method not found: " + methodName);
+    }
+
+    private static Object extractParameterValue(Parameter parameter, HttpServletRequest request) throws Exception {
+        if (parameter.isAnnotationPresent(Param.class)) {
+            Param param = parameter.getAnnotation(Param.class);
+            String paramName = param.name();
+            String paramValue = request.getParameter(paramName);
+            return convertParameter(paramValue, parameter.getType(), request, paramName);
+        } else if (parameter.isAnnotationPresent(FileRequest.class)) {
+            FileRequest fileRequest = parameter.getAnnotation(FileRequest.class);
+            return new WinterPart(request.getPart(fileRequest.name()));
+        } else if (parameter.getType().equals(SessionManager.class)) {
+            return new SessionManager(request.getSession());
+        }
+        System.err.println("Missing required annotation for parameter: " + parameter.getName());
+        throw new Exception("ETU002669, add annotations to all parameters");
+    }
+
+    private static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) throws Exception {
+        if (type.equals(String.class)) return value;
+        if (type.equals(int.class) || type.equals(Integer.class)) return Integer.parseInt(value);
+        if (type.equals(long.class) || type.equals(Long.class)) return Long.parseLong(value);
+        if (type.equals(double.class) || type.equals(Double.class)) return Double.parseDouble(value);
+        if (type.equals(float.class) || type.equals(Float.class)) return Float.parseFloat(value);
+        if (type.equals(boolean.class) || type.equals(Boolean.class)) return Boolean.parseBoolean(value);
+        
+        Object instance = type.getDeclaredConstructor().newInstance();
+        for (Field field : type.getDeclaredFields()) {
+            String fieldValue = request.getParameter(paramName + "." + field.getName());
+            if (fieldValue != null) {
+                field.setAccessible(true);
+                field.set(instance, convertParameter(fieldValue, field.getType(), request, paramName + "." + field.getName()));
+            }
+        }
+        return instance;
     }
 }
