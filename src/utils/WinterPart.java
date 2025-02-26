@@ -43,22 +43,28 @@ public class WinterPart {
     }
         
     public void save(String filePath) throws IOException {
-        String projectRoot = context.getRealPath("/");
-        // Create the full path
-        Path path = Paths.get(projectRoot, "static", filePath, getSubmittedFileName());
-
-        // Get the parent directory of the file
+        Path path;
+        
+        // Vérifier si le filePath est un chemin absolu
+        if (Paths.get(filePath).isAbsolute()) {
+            path = Paths.get(filePath, getSubmittedFileName());
+        } else {
+            String projectRoot = context.getRealPath("/");
+            path = Paths.get(projectRoot, "static", filePath, getSubmittedFileName());
+        }
+    
+        // Obtenir le répertoire parent du fichier
         Path parentDir = path.getParent();
-
-        System.out.println("chemin complet : " + parentDir);
-
-        // Create directories if they don't exist
+    
+        System.out.println("Chemin complet : " + path);
+    
+        // Créer les répertoires s'ils n'existent pas
         if (parentDir != null && !Files.exists(parentDir)) {
             Files.createDirectories(parentDir);
         }
-
-        // Write the file content to the specified path
+    
+        // Écrire le contenu du fichier
         Files.write(path, getBytes());
-    }
+    }    
  
 }
