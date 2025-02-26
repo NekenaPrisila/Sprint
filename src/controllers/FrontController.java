@@ -138,7 +138,48 @@ public class FrontController extends HttpServlet {
         }
     }
 
+    public boolean isStaticFile(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        String relativePath = url.substring(contextPath.length());
+    
+        // Définir les extensions autorisées pour les fichiers statiques
+        String[] staticExtensions = {".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".woff", ".woff2", ".ttf"};
+    
+        // Vérifier si l'URL correspond à un fichier statique
+        for (String ext : staticExtensions) {
+            if (relativePath.endsWith(ext)) {
+                File staticFile = new File(getServletContext().getRealPath(relativePath));
+                if (staticFile.exists() && staticFile.isFile()) {
+                    // Déterminer le type MIME et renvoyer le fichier
+                    String mimeType = getServletContext().getMimeType(staticFile.getName());
+                    if (mimeType == null) {
+                        mimeType = "application/octet-stream"; // Par défaut
+                    }
+                    resp.setContentType(mimeType);
+                    resp.setContentLength((int) staticFile.length());
+                    
+                    // Envoyer le fichier dans la réponse
+                    try (var in = new java.io.FileInputStream(staticFile);
+                         var out = resp.getOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }    
+
     protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        // Vérifier si c'est un fichier statique
+        if (isStaticFile(req, resp)) {
+            return; // Ne pas traiter plus loin si c'est un fichier statique
+        }
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());

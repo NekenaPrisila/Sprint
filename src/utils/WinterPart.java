@@ -14,7 +14,7 @@ import java.nio.file.Paths;
 public class WinterPart {
 
     private final Part part;
-    private final ServletContext context;  // Stocke le contexte
+    private final ServletContext context;
 
     public byte[] getBytes() throws IOException {
         return part.getInputStream().readAllBytes();
