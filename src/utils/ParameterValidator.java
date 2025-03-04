@@ -13,10 +13,10 @@ public class ParameterValidator {
 
     public static void validateParameter(Object value, Parameter parameter, FieldErrors fieldErrors) throws IllegalAccessException {
 
-        if (!parameter.isAnnotationPresent(RequestParameter.class)) return;
+        if (!parameter.isAnnotationPresent(Param.class)) return;
 
-        RequestParameter requestParameter = parameter.getAnnotation(RequestParameter.class);
-        String parameterName = requestParameter.value();
+        Param param = parameter.getAnnotation(Param.class);
+        String parameterName = param.name();
         checkValidationAnnotations(parameter, parameterName, value, fieldErrors);
 
         Class<?> parameterClass = parameter.getType();
@@ -29,9 +29,9 @@ public class ParameterValidator {
             Object fieldValue = field.get(value);
             field.setAccessible(false);
 
-            if (!field.isAnnotationPresent(RequestParameter.class)) continue;
+            if (!field.isAnnotationPresent(Param.class)) continue;
 
-            String fieldName = field.getAnnotation(RequestParameter.class).value();
+            String fieldName = field.getAnnotation(Param.class).name();
             checkValidationAnnotations(field, parameterName + "." + fieldName, fieldValue, fieldErrors);
         }
     }

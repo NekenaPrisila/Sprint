@@ -27,4 +27,8 @@ public class FieldErrors {
         return fieldErrors.get(field);
     }
 
+    public HashMap<String, List<String>> getFieldErrors() {
+        return fieldErrors;
+    }
+
 }

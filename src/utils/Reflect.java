@@ -1,13 +1,16 @@
 package utils;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.lang.reflect.*;
+
 import annotations.FileRequest;
 import annotations.Param;
 
 public class Reflect {
-    public static Object executeMethod(Mapping mapping, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    public static Object executeMethod(Mapping mapping, HttpServletRequest request, HttpServletResponse response, ServletContext context) throws Exception {
         Class<?> clazz;
         Object instance;
         Method method;
@@ -17,10 +20,8 @@ public class Reflect {
             instance = clazz.getDeclaredConstructor().newInstance();
             System.out.println("Instance created: " + instance);
         }catch (ClassNotFoundException e) {
-            System.err.println("Class not found: " + mapping.getClassName());
             throw new Exception("Class not found: " + mapping.getClassName(), e);
         } catch (InstantiationException | IllegalAccessException | NoSuchMethodException | InvocationTargetException e) {
-            System.err.println("Error creating instance of: " + mapping.getClassName());
             throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
         } catch (Exception e) {
             throw new Exception("Error creating instance of: " + mapping.getClassName(), e);
@@ -35,14 +36,14 @@ public class Reflect {
         FieldErrors fieldErrors = new FieldErrors();
         
         for (int i = 0; i < parameters.length; i++) {
-            Object paramValue = extractParameterValue(parameters[i], request);
+            Object paramValue = extractParameterValue(parameters[i], request, context);
             ParameterValidator.validateParameter(paramValue, parameters[i], fieldErrors);
             args[i] = paramValue;
         }
         
-        // if (!fieldErrors.isEmpty()) {
-        //     throw new ValidationException(fieldErrors);
-        // }
+        if (fieldErrors.hasErrors()) {
+            return fieldErrors;
+        }
         
         return method.invoke(instance, args);
     }
@@ -56,7 +57,7 @@ public class Reflect {
         throw new NoSuchMethodException("Method not found: " + methodName);
     }
 
-    private static Object extractParameterValue(Parameter parameter, HttpServletRequest request) throws Exception {
+    private static Object extractParameterValue(Parameter parameter, HttpServletRequest request, ServletContext context) throws Exception {
         if (parameter.isAnnotationPresent(Param.class)) {
             Param param = parameter.getAnnotation(Param.class);
             String paramName = param.name();
@@ -64,7 +65,7 @@ public class Reflect {
             return convertParameter(paramValue, parameter.getType(), request, paramName);
         } else if (parameter.isAnnotationPresent(FileRequest.class)) {
             FileRequest fileRequest = parameter.getAnnotation(FileRequest.class);
-            return new WinterPart(request.getPart(fileRequest.name()));
+            return new WinterPart(request.getPart(fileRequest.name()),context);
         } else if (parameter.getType().equals(SessionManager.class)) {
             return new SessionManager(request.getSession());
         }

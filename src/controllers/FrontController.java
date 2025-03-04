@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.google.gson.Gson;
@@ -14,6 +16,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import utils.FieldErrors;
 import utils.HttpMethod;
 import utils.Mapping;
 import utils.ModelView;
@@ -23,10 +26,10 @@ import annotations.GET;
 import annotations.POST;
 import annotations.RestController;
 import annotations.RestEndPoint;
+import annotations.validation.ErrorUrl;
 
 @MultipartConfig
 public class FrontController extends HttpServlet {
-    public static final String STATIC_DIRECTORY = "static";
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
 
     public void init() throws ServletException {
@@ -139,7 +142,48 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    public boolean isStaticFile(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        String url = req.getRequestURI();
+        String contextPath = req.getContextPath();
+        String relativePath = url.substring(contextPath.length());
+    
+        // Définir les extensions autorisées pour les fichiers statiques
+        String[] staticExtensions = {".css", ".js", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".woff", ".woff2", ".ttf"};
+    
+        // Vérifier si l'URL correspond à un fichier statique
+        for (String ext : staticExtensions) {
+            if (relativePath.endsWith(ext)) {
+                File staticFile = new File(getServletContext().getRealPath(relativePath));
+                if (staticFile.exists() && staticFile.isFile()) {
+                    // Déterminer le type MIME et renvoyer le fichier
+                    String mimeType = getServletContext().getMimeType(staticFile.getName());
+                    if (mimeType == null) {
+                        mimeType = "application/octet-stream"; // Par défaut
+                    }
+                    resp.setContentType(mimeType);
+                    resp.setContentLength((int) staticFile.length());
+                    
+                    // Envoyer le fichier dans la réponse
+                    try (var in = new java.io.FileInputStream(staticFile);
+                         var out = resp.getOutputStream()) {
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while ((bytesRead = in.read(buffer)) != -1) {
+                            out.write(buffer, 0, bytesRead);
+                        }
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }    
+
+    protected void processRequested(HttpServletRequest req, HttpServletResponse resp) throws Exception {
+        // Vérifier si c'est un fichier statique
+        if (isStaticFile(req, resp)) {
+            return; // Ne pas traiter plus loin si c'est un fichier statique
+        }
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
@@ -179,7 +223,26 @@ public class FrontController extends HttpServlet {
                 boolean isRestEndPoint = targetMethod.isAnnotationPresent(RestEndPoint.class);
         
                 // Exécution de la méthode et récupération du résultat
-                Object result = Reflect.executeMethod(mapping, req, resp);
+                Object result = Reflect.executeMethod(mapping, req, resp, getServletContext());
+
+                if (result instanceof FieldErrors) {
+                    if (targetMethod.isAnnotationPresent(ErrorUrl.class)) {
+                        // Récupérer l'annotation
+                        ErrorUrl errorUrlAnnotation = targetMethod.getAnnotation(ErrorUrl.class);
+                        // Récupérer la valeur de l'annotation
+                        String errorUrl = errorUrlAnnotation.value();
+                        HashMap<String, List<String>> errors = ((FieldErrors) result).getFieldErrors();
+                        ModelView mv = new ModelView(errorUrl);
+    
+                        // Boucler sur les erreurs et les ajouter au ModelView
+                        for (Map.Entry<String, List<String>> entry : errors.entrySet()) {
+                            mv.addData("errors_" + entry.getKey(), entry.getValue());
+                        }
+
+                        mv.getData().forEach((key, value) -> req.setAttribute(key, value));
+                        req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+                    } 
+                }
         
                 if (isRestController && isRestEndPoint) {
                     // Si c'est un contrôleur REST, renvoyer la réponse en JSON
@@ -219,14 +282,23 @@ public class FrontController extends HttpServlet {
             // Gestion d'autres exceptions générales
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             out.println("Internal server error: " + e.getMessage());
+            throw new Exception();            
         }
     }      
         
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequested(req, resp);
+        try {
+            processRequested(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        processRequested(req, resp);
+        try {
+            processRequested(req, resp);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
