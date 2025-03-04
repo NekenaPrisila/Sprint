@@ -9,6 +9,7 @@ import java.lang.reflect.*;
 import annotations.FileRequest;
 import annotations.Param;
 import annotations.authentication.Authenticated;
+import annotations.authentication.Public;
 
 public class Reflect {
     public static Object executeMethod(Mapping mapping, HttpServletRequest request, HttpServletResponse response, ServletContext context) throws Exception {
@@ -31,6 +32,15 @@ public class Reflect {
         method = findMethod(clazz, mapping.getMethodName());
         System.out.println("Method obtained: " + method);
 
+        
+        if (
+            clazz.isAnnotationPresent(Authenticated.class)
+                && !method.isAnnotationPresent(Public.class)
+                && !method.isAnnotationPresent(Authenticated.class)
+        ) {
+            Authenticated authenticated = clazz.getAnnotation(Authenticated.class);
+            if (!Authenticator.isAuthorised(request, authenticated)) throw new Exception("You are not allowed to access this URL");
+        }
         if(method.isAnnotationPresent(Authenticated.class)) {
             Authenticated authenticated = method.getAnnotation(Authenticated.class);
             if (!Authenticator.isAuthorised(request, authenticated)) throw new Exception("You are not allowed to access this URL");
