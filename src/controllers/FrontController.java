@@ -189,6 +189,7 @@ public class FrontController extends HttpServlet {
         if (isStaticFile(req, resp)) {
             return; // Ne pas traiter plus loin si c'est un fichier statique
         }
+        
         String url = req.getRequestURI();
         String contextPath = req.getContextPath();
         String relativeUrl = url.substring(contextPath.length());
