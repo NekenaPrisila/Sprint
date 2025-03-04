@@ -30,10 +30,16 @@ import annotations.validation.ErrorUrl;
 
 @MultipartConfig
 public class FrontController extends HttpServlet {
+    public static String SESSION_AUTHENTICATED, SESSION_ROLE;
+
     private HashMap<String, Mapping> urlMappings = new HashMap<>();
 
     public void init() throws ServletException {
         super.init();
+        SESSION_AUTHENTICATED = getInitParameter("session_authenticated") != null
+		? getInitParameter("session_authenticated")
+		: "authenticated";
+        SESSION_ROLE = getInitParameter("session_role") != null ? getInitParameter("session_role") : "role";
         findControllerClasses();
     }
 
@@ -69,7 +75,6 @@ public class FrontController extends HttpServlet {
                             urlMappings.put(url, mapping);
                         }
                     }
-                    // Ajouter des vérifications pour PUT, DELETE si nécessaire
                 }
             }
             if (clazz.isAnnotationPresent(RestController.class)) {
@@ -208,6 +213,7 @@ public class FrontController extends HttpServlet {
             if (mapping != null && mapping.getHttpMethod() == requestMethod) {  // Vérifier que le verbe correspond
                 // Trouver la classe et la méthode associée au mappage
                 Class<?> clazz = Class.forName(mapping.getClassName());
+                
                 Method targetMethod = null;
                 for (Method m : clazz.getDeclaredMethods()) {
                     if (m.getName().equals(mapping.getMethodName())) {
