@@ -9,7 +9,6 @@ import java.lang.reflect.*;
 import annotations.FileRequest;
 import annotations.Param;
 import annotations.authentication.Authenticated;
-import annotations.authentication.Public;
 
 public class Reflect {
     public static Object executeMethod(Mapping mapping, HttpServletRequest request, HttpServletResponse response, ServletContext context) throws Exception {
