@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import com.google.gson.Gson;
@@ -14,6 +16,7 @@ import jakarta.servlet.annotation.MultipartConfig;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import utils.FieldErrors;
 import utils.HttpMethod;
 import utils.Mapping;
 import utils.ModelView;
@@ -23,6 +26,7 @@ import annotations.GET;
 import annotations.POST;
 import annotations.RestController;
 import annotations.RestEndPoint;
+import annotations.validation.ErrorUrl;
 
 @MultipartConfig
 public class FrontController extends HttpServlet {
@@ -220,6 +224,25 @@ public class FrontController extends HttpServlet {
         
                 // Exécution de la méthode et récupération du résultat
                 Object result = Reflect.executeMethod(mapping, req, resp, getServletContext());
+
+                if (result instanceof FieldErrors) {
+                    if (targetMethod.isAnnotationPresent(ErrorUrl.class)) {
+                        // Récupérer l'annotation
+                        ErrorUrl errorUrlAnnotation = targetMethod.getAnnotation(ErrorUrl.class);
+                        // Récupérer la valeur de l'annotation
+                        String errorUrl = errorUrlAnnotation.value();
+                        HashMap<String, List<String>> errors = ((FieldErrors) result).getFieldErrors();
+                        ModelView mv = new ModelView(errorUrl);
+    
+                        // Boucler sur les erreurs et les ajouter au ModelView
+                        for (Map.Entry<String, List<String>> entry : errors.entrySet()) {
+                            mv.addData("errors_" + entry.getKey(), entry.getValue());
+                        }
+
+                        mv.getData().forEach((key, value) -> req.setAttribute(key, value));
+                        req.getRequestDispatcher(mv.getUrl()).forward(req, resp);
+                    } 
+                }
         
                 if (isRestController && isRestEndPoint) {
                     // Si c'est un contrôleur REST, renvoyer la réponse en JSON

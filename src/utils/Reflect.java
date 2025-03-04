@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.lang.reflect.*;
+
 import annotations.FileRequest;
 import annotations.Param;
 
@@ -40,9 +41,9 @@ public class Reflect {
             args[i] = paramValue;
         }
         
-        // if (!fieldErrors.isEmpty()) {
-        //     throw new ValidationException(fieldErrors);
-        // }
+        if (fieldErrors.hasErrors()) {
+            return fieldErrors;
+        }
         
         return method.invoke(instance, args);
     }
