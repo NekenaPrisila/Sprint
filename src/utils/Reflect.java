@@ -5,6 +5,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.lang.reflect.*;
+import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 
 import annotations.FileRequest;
 import annotations.Param;
@@ -96,6 +102,18 @@ public class Reflect {
         if (type.equals(double.class) || type.equals(Double.class)) return Double.parseDouble(value);
         if (type.equals(float.class) || type.equals(Float.class)) return Float.parseFloat(value);
         if (type.equals(boolean.class) || type.equals(Boolean.class)) return Boolean.parseBoolean(value);
+        if (type.equals(short.class) || type.equals(Short.class)) return Short.parseShort(value);
+        if (type.equals(byte.class) || type.equals(Byte.class)) return Byte.parseByte(value);
+        if (type.equals(char.class) || type.equals(Character.class)) return value.charAt(0);
+
+        SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+        DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        // Conversion des dates
+        if (type.equals(Date.class)) return DATE_FORMAT.parse(value);
+        if (type.equals(Timestamp.class)) return Timestamp.valueOf(value + " 00:00:00"); // Ajout de l'heure par défaut
+        if (type.equals(LocalDate.class)) return LocalDate.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+        if (type.equals(LocalDateTime.class)) return LocalDateTime.parse(value, DATE_TIME_FORMATTER);
         
         Object instance = type.getDeclaredConstructor().newInstance();
         for (Field field : type.getDeclaredFields()) {
