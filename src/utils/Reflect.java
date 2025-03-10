@@ -5,12 +5,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.lang.reflect.*;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.Date;
 
 import annotations.FileRequest;
 import annotations.Param;
@@ -95,34 +97,76 @@ public class Reflect {
         throw new Exception("ETU002669, add annotations to all parameters");
     }
 
-    private static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) throws Exception {
-        if (type.equals(String.class)) return value;
-        if (type.equals(int.class) || type.equals(Integer.class)) return Integer.parseInt(value);
-        if (type.equals(long.class) || type.equals(Long.class)) return Long.parseLong(value);
-        if (type.equals(double.class) || type.equals(Double.class)) return Double.parseDouble(value);
-        if (type.equals(float.class) || type.equals(Float.class)) return Float.parseFloat(value);
-        if (type.equals(boolean.class) || type.equals(Boolean.class)) return Boolean.parseBoolean(value);
-        if (type.equals(short.class) || type.equals(Short.class)) return Short.parseShort(value);
-        if (type.equals(byte.class) || type.equals(Byte.class)) return Byte.parseByte(value);
-        if (type.equals(char.class) || type.equals(Character.class)) return value.charAt(0);
+    public static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) throws Exception {
+        if (value != null) {
+            // Décoder la valeur si elle contient des caractères encodés (comme %3A)
+            String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
+    
+            if (type.equals(String.class)) {
+                return decodedValue;
+            }
+            if (type.equals(int.class) || type.equals(Integer.class)) {
+                return Integer.parseInt(decodedValue);
+            }
+            if (type.equals(long.class) || type.equals(Long.class)) {
+                return Long.parseLong(decodedValue);
+            }
+            if (type.equals(double.class) || type.equals(Double.class)) {
+                return Double.parseDouble(decodedValue);
+            }
+            if (type.equals(float.class) || type.equals(Float.class)) {
+                return Float.parseFloat(decodedValue);
+            }
+            if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+                return Boolean.parseBoolean(decodedValue);
+            }
+    
+            // Gestion des dates et heures
+            if (type.equals(Timestamp.class)) {
+                System.out.println("yeess");
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+                LocalDateTime localDateTime = LocalDateTime.parse(decodedValue, formatter);
+                Timestamp timestamp = Timestamp.from(localDateTime.toInstant(ZoneOffset.UTC));
+                return timestamp;
+            }
+            if (type.equals(LocalDate.class)) {
+                return LocalDate.parse(decodedValue, DateTimeFormatter.ISO_LOCAL_DATE);
+            }
+            if (type.equals(LocalDateTime.class)) {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
+                LocalDateTime localDateTime = LocalDateTime.parse(decodedValue, formatter);
+                return localDateTime;
+            }
+            if (type.equals(LocalTime.class)) {
+                return parseLocalTime(decodedValue);
+            }
 
-        SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-        DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        }
 
-        // Conversion des dates
-        if (type.equals(Date.class)) return DATE_FORMAT.parse(value);
-        if (type.equals(Timestamp.class)) return Timestamp.valueOf(value + " 00:00:00"); // Ajout de l'heure par défaut
-        if (type.equals(LocalDate.class)) return LocalDate.parse(value, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        if (type.equals(LocalDateTime.class)) return LocalDateTime.parse(value, DATE_TIME_FORMATTER);
-        
+        // Gestion des objets complexes
         Object instance = type.getDeclaredConstructor().newInstance();
         for (Field field : type.getDeclaredFields()) {
             String fieldValue = request.getParameter(paramName + "." + field.getName());
             if (fieldValue != null) {
                 field.setAccessible(true);
+                System.out.println("fieldType : " + field.getType());
                 field.set(instance, convertParameter(fieldValue, field.getType(), request, paramName + "." + field.getName()));
             }
         }
         return instance;
     }
+
+    // Méthode pour gérer LocalTime avec différents formats
+    private static LocalTime parseLocalTime(String value) {
+        DateTimeFormatter formatter;
+        if (value.matches("\\d{2}:\\d{2}")) { // Format HH:mm sans secondes
+            formatter = DateTimeFormatter.ofPattern("HH:mm");
+        } else if (value.matches("\\d{2}:\\d{2}:\\d{2}")) { // Format HH:mm:ss avec secondes
+            formatter = DateTimeFormatter.ISO_LOCAL_TIME;
+        } else { // Format ISO HH:mm:ss
+            formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        }
+        return LocalTime.parse(value, formatter);
+    }
+
 }
