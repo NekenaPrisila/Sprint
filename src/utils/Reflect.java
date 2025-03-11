@@ -85,8 +85,7 @@ public class Reflect {
         if (parameter.isAnnotationPresent(Param.class)) {
             Param param = parameter.getAnnotation(Param.class);
             String paramName = param.name();
-            String paramValue = request.getParameter(paramName);
-            return convertParameter(paramValue, parameter.getType(), request, paramName);
+            return convertParameter(parameter.getType(), request, paramName);
         } else if (parameter.isAnnotationPresent(FileRequest.class)) {
             FileRequest fileRequest = parameter.getAnnotation(FileRequest.class);
             return new WinterPart(request.getPart(fileRequest.name()),context);
@@ -97,10 +96,14 @@ public class Reflect {
         throw new Exception("ETU002669, add annotations to all parameters");
     }
 
-    public static Object convertParameter(String value, Class<?> type, HttpServletRequest request, String paramName) throws Exception {
-        if (value != null) {
+    public static Object convertParameter(Class<?> type, HttpServletRequest request, String paramName) throws Exception {
+        String paramValue = request.getParameter(paramName);
+
+        if (paramValue != null && !paramValue.isEmpty()) {
+            System.out.println("paramValue : " + paramValue);
+            
             // Décoder la valeur si elle contient des caractères encodés (comme %3A)
-            String decodedValue = URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
+            String decodedValue = URLDecoder.decode(paramValue, StandardCharsets.UTF_8.toString());
     
             if (type.equals(String.class)) {
                 return decodedValue;
@@ -123,7 +126,7 @@ public class Reflect {
     
             // Gestion des dates et heures
             if (type.equals(Timestamp.class)) {
-                System.out.println("yeess");
+                System.out.println("value Time : "+ decodedValue);
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
                 LocalDateTime localDateTime = LocalDateTime.parse(decodedValue, formatter);
                 Timestamp timestamp = Timestamp.from(localDateTime.toInstant(ZoneOffset.UTC));
@@ -140,20 +143,29 @@ public class Reflect {
             if (type.equals(LocalTime.class)) {
                 return parseLocalTime(decodedValue);
             }
-
+        }else if (paramValue.isEmpty()) {
+            return null;
         }
-
-        // Gestion des objets complexes
-        Object instance = type.getDeclaredConstructor().newInstance();
-        for (Field field : type.getDeclaredFields()) {
-            String fieldValue = request.getParameter(paramName + "." + field.getName());
-            if (fieldValue != null) {
-                field.setAccessible(true);
-                System.out.println("fieldType : " + field.getType());
-                field.set(instance, convertParameter(fieldValue, field.getType(), request, paramName + "." + field.getName()));
+        else {
+            try {
+                // Gestion des objets complexes
+                Object instance = type.getDeclaredConstructor().newInstance();
+                if (instance != null) {
+                    for (Field field : type.getDeclaredFields()) {
+                        String fieldValue = request.getParameter(paramName + "." + field.getName());
+                        if (fieldValue != null) {
+                            field.setAccessible(true);
+                            System.out.println("fieldType : " + field.getType());
+                            field.set(instance, convertParameter(field.getType(), request, paramName + "." + field.getName()));
+                        }
+                    }
+                    return instance;
+                }             
+            } catch (Exception e) {
+                return null;
             }
         }
-        return instance;
+        return null;
     }
 
     // Méthode pour gérer LocalTime avec différents formats
