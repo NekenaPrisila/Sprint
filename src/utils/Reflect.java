@@ -61,7 +61,7 @@ public class Reflect {
         
         for (int i = 0; i < parameters.length; i++) {
             Object paramValue = extractParameterValue(parameters[i], request, context);
-            ParameterValidator.validateParameter(paramValue, parameters[i], fieldErrors);
+            ParameterValidator.validateParameter(paramValue, parameters[i], fieldErrors);   
             args[i] = paramValue;
         }
         
@@ -143,7 +143,8 @@ public class Reflect {
             if (type.equals(LocalTime.class)) {
                 return parseLocalTime(decodedValue);
             }
-        }else if (paramValue.isEmpty()) {
+        }else if (paramValue != null && paramValue.isEmpty()) {
+            System.out.println("empty ilay izy");
             return null;
         }
         else {
@@ -162,7 +163,7 @@ public class Reflect {
                     return instance;
                 }             
             } catch (Exception e) {
-                return null;
+                System.out.println(e.getMessage());
             }
         }
         return null;

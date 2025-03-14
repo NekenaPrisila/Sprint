@@ -24,15 +24,17 @@ public class ParameterValidator {
             return;
         }
 
-        for (Field field : parameterClass.getDeclaredFields()) {
-            field.setAccessible(true);
-            Object fieldValue = field.get(value);
-            field.setAccessible(false);
-
-            if (!field.isAnnotationPresent(Param.class)) continue;
-
-            String fieldName = field.getAnnotation(Param.class).name();
-            checkValidationAnnotations(field, parameterName + "." + fieldName, fieldValue, fieldErrors);
+        if (value!=null) {
+            for (Field field : parameterClass.getDeclaredFields()) {
+                field.setAccessible(true);
+                Object fieldValue = field.get(value);
+                field.setAccessible(false);
+    
+                if (!field.isAnnotationPresent(Param.class)) continue;
+    
+                String fieldName = field.getAnnotation(Param.class).name();
+                checkValidationAnnotations(field, parameterName + "." + fieldName, fieldValue, fieldErrors);
+            }
         }
     }
 
