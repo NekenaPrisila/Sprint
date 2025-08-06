@@ -37,7 +37,6 @@ public class ParameterValidator {
             }
         }
     }
-
     private static void checkValidationAnnotations(AnnotatedElement annotatedElement, String fieldName, Object value, FieldErrors fieldErrors) {
 
         if (annotatedElement.isAnnotationPresent(Required.class)) {
